@@ -13,6 +13,7 @@ import static etherip.types.CNPath.Identity;
 import static etherip.types.CNPath.MessageRouter;
 import static etherip.types.CNService.Get_Attribute_Single;
 
+import java.net.InetSocketAddress;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,7 +43,7 @@ public class EtherNetIP implements AutoCloseable
     
 	final public static Logger logger = Logger.getLogger(EtherNetIP.class.getName());
 
-	final private String address;
+	final private InetSocketAddress address;
 	final private int slot;
 	private Connection connection = null;
 
@@ -53,6 +54,11 @@ public class EtherNetIP implements AutoCloseable
 	 */
 	public EtherNetIP(final String address, final int slot)
 	{
+		this.address = new InetSocketAddress(address, 0xAF12);
+		this.slot = slot;
+	}
+
+	public EtherNetIP(final InetSocketAddress address, final int slot) {
 		this.address = address;
 		this.slot = slot;
 	}
@@ -68,6 +74,14 @@ public class EtherNetIP implements AutoCloseable
 		getDeviceInfo();
 	}
 	
+	public Connection getConnection() {
+		return connection;
+	}
+
+	public boolean isConnected() {
+		return connection != null && connection.getSession() != 0;
+	}
+
 	/** List supported services
 	 *  @throws Exception on error getting services, or when expected service not supported
 	 */
@@ -144,12 +158,20 @@ public class EtherNetIP implements AutoCloseable
 	
 	public CIPData readTag(final String tag) throws Exception
 	{
-		final MRChipReadProtocol cip_read = new MRChipReadProtocol(tag);
+		return readTag(tag, 1);
+	}
+
+	public CIPData readTag(final String tag, final int numElements) throws Exception {
+		return readTag(tag, numElements, null);
+	}
+
+	public CIPData readTag(final String tag, final int numElements, final byte[] context) throws Exception {
+		final MRChipReadProtocol cip_read = new MRChipReadProtocol(tag, numElements);
 		final Encapsulation encap =
 			new Encapsulation(SendRRData, connection.getSession(),
 				new SendRRDataProtocol(
 					new UnconnectedSendProtocol(slot,
-					    cip_read)));
+								                                              cip_read)), context);
 		connection.execute(encap);
 		
 		return cip_read.getData();
@@ -177,13 +199,17 @@ public class EtherNetIP implements AutoCloseable
 	
 	public void writeTag(final String tag, final CIPData value) throws Exception
 	{
+		writeTag(tag, value, null);
+	}
+
+	public void writeTag(final String tag, final CIPData value, final byte[] context) throws Exception {
 	    final MRChipWriteProtocol cip_write = new MRChipWriteProtocol(tag, value);
 
 	    final Encapsulation encap =
 	            new Encapsulation(SendRRData, connection.getSession(),
                     new SendRRDataProtocol(
 	                    new UnconnectedSendProtocol(slot,
-	                            cip_write)));
+	                            cip_write)), context);
         connection.execute(encap);
     }
 

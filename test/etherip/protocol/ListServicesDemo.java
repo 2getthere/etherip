@@ -12,6 +12,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import etherip.TestSettings;
@@ -22,6 +23,7 @@ import etherip.protocol.ListServicesProtocol.Service;
  */
 public class ListServicesDemo
 {
+	@Ignore("requires connection")
     @Test
     public void testListServices() throws Exception
     {

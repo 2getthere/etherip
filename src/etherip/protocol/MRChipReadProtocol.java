@@ -26,6 +26,10 @@ public class MRChipReadProtocol extends MessageRouterProtocol
         this(tag, new CIPReadDataProtocol());
     }
 
+    public MRChipReadProtocol(final String tag, int numElements) {
+        this(tag, new CIPReadDataProtocol(numElements));
+    }
+
     /** Initialize
      *  @param tag Name of tag to read
      *  @param body Protocol embedded in the message request/response

@@ -11,6 +11,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import etherip.TestSettings;
@@ -20,6 +21,7 @@ import etherip.TestSettings;
  */
 public class RegisterSessionDemo
 {
+	@Ignore("requires connection")
     @Test
     public void testRegisterSession() throws Exception
     {

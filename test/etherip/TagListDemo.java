@@ -11,6 +11,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import etherip.protocol.Connection;
@@ -25,6 +26,7 @@ public class TagListDemo
 		TestSettings.logAll();
 	}
 
+	@Ignore("requires connection")
 	@Test
 	public void testTagList() throws Exception
 	{

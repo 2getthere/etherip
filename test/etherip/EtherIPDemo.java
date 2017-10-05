@@ -16,6 +16,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import etherip.types.CIPData;
@@ -30,6 +31,7 @@ public class EtherIPDemo
 		TestSettings.logAll();
 	}
 
+    @Ignore("requires connection")
 	@Test
 	public void testEtherIP() throws Exception
 	{
@@ -63,6 +65,7 @@ public class EtherIPDemo
 		}
 	}
 
+    @Ignore("requires connection")
     @Test
     public void testBool() throws Exception
     {

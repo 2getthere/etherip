@@ -19,6 +19,15 @@ import etherip.types.CNService;
 public class CIPReadDataProtocol extends ProtocolAdapter
 {
     private CIPData data;
+    private final int numElements;
+
+    public CIPReadDataProtocol(int numElements) {
+        this.numElements = numElements;
+    }
+
+    public CIPReadDataProtocol() {
+        this(1);
+    }
 
     @Override
     public int getRequestSize()
@@ -29,9 +38,9 @@ public class CIPReadDataProtocol extends ProtocolAdapter
     @Override
     public void encode(final ByteBuffer buf, final StringBuilder log)
     {
-        buf.putShort((short) 1); // elements
+        buf.putShort((short) numElements); // elements
         if (log != null)
-            log.append("USINT elements          : 1\n");
+            log.append("USINT elements          : ").append(numElements).append("\n");
     }
 
     @Override

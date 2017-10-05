@@ -14,6 +14,10 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.AsynchronousSocketChannel;
+import java.nio.channels.CompletionHandler;
+import java.nio.channels.NetworkChannel;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 
 import etherip.util.Hexdump;
@@ -39,7 +43,8 @@ public class Connection implements AutoCloseable
 	
 	private int session = 0;
 
-	private long timeout_ms = 2000;
+	private long timeout = 2000; // allow time units
+	private TimeUnit timeoutUnit = TimeUnit.MILLISECONDS;
 	private int port = 0xAF12;
 	
 	/** Initialize
@@ -49,13 +54,42 @@ public class Connection implements AutoCloseable
 	 */
 	public Connection(final String address, final int slot) throws Exception
 	{
-	    logger.log(Level.INFO, "Connecting to {0}:{1}", new Object[] { address, String.format("0x%04X", port) });
+	    logger.log(Level.FINE, "Connecting to {0}:{1}", new Object[] {address, port});
 	    this.slot = slot;
         channel = AsynchronousSocketChannel.open();
-		channel.connect(new InetSocketAddress(address, port)).get(timeout_ms, MILLISECONDS);
+		channel.connect(new InetSocketAddress(address, port)).get(timeout, timeoutUnit);
 		
 		buffer = ByteBuffer.allocateDirect(BUFFER_SIZE);
 		buffer.order(BYTE_ORDER);
+	}
+
+	public Connection(final InetSocketAddress inetAddress, final int slot) throws Exception {
+		this.port = inetAddress.getPort();
+		final String address = inetAddress.getHostString();
+		logger.log(Level.FINE, "Connecting to {0}:{1}", new Object[]{address, port});
+		this.slot = slot;
+		channel = AsynchronousSocketChannel.open();
+		channel.connect(inetAddress).get(timeout, timeoutUnit);
+
+		buffer = ByteBuffer.allocateDirect(BUFFER_SIZE);
+		buffer.order(BYTE_ORDER);
+	}
+
+	public int getPort() {
+		return port;
+	}
+
+	public long getTimeout(TimeUnit unit) {
+		return unit.convert(timeout, timeoutUnit);
+	}
+
+	public NetworkChannel getChannel() {
+		return channel;
+	}
+
+	public void setTimeout(long timeout, TimeUnit unit) {
+		this.timeout = timeout;
+		this.timeoutUnit = unit;
 	}
 
 	/** @return Slot number 0, 1, .. of the controller within PLC crate */
@@ -105,13 +139,43 @@ public class Connection implements AutoCloseable
 			logger.log(Level.FINEST, "Data sent ({0} bytes):\n{1}",
 					new Object[] { buffer.remaining(), Hexdump.toHexdump(buffer) });
 		
+	    final long startMillis = System.currentTimeMillis();
+	    final long endMillis = startMillis + timeoutUnit.convert(timeout, TimeUnit.MILLISECONDS);
 		int to_write = buffer.limit();
-		while (to_write > 0)
-		{
-			final int written = channel.write(buffer).get(timeout_ms, MILLISECONDS);
-			to_write -= written;
-			if (to_write > 0)
+	    while (to_write > 0) {
+		    logger.log(Level.FINEST, "Calling write on channel with timeout {0} {1}",
+		               new Object[]{timeout, timeoutUnit});
+		    final int[] numWrittenHolder = new int[1];
+		    final Exception[] exceptionHolder = new Exception[1];
+		    channel.write(buffer, timeout, timeoutUnit, null, new CompletionHandler<Integer, Object>() {
+			    @Override
+			    public void completed(final Integer result, final Object attachment) {
+				    numWrittenHolder[0] += result;
+			    }
+
+			    @Override
+			    public void failed(final Throwable exc, final Object attachment) {
+				    if (exc instanceof Exception) {
+					    exceptionHolder[0] = (Exception) exc;
+				    } else {
+					    exceptionHolder[0] = new Exception(exc);
+				    }
+			    }
+		    });
+		    while (numWrittenHolder[0] == 0 && exceptionHolder[0] == null && System.currentTimeMillis() < endMillis) {
+			    Thread.sleep(100);
+		    }
+		    if (exceptionHolder[0] != null) {
+			    throw exceptionHolder[0];
+		    }
+		    to_write -= numWrittenHolder[0];
+		    if (to_write > 0) {
 				buffer.compact();
+
+			    if (System.currentTimeMillis() >= endMillis) {
+				    throw new TimeoutException();
+			    }
+		    }
 		}
     }
 
@@ -123,9 +187,35 @@ public class Connection implements AutoCloseable
     {
 		// Read until protocol has enough data to decode
 		buffer.clear();
-		do
-		{
-			channel.read(buffer).get(timeout_ms, MILLISECONDS);
+	    final long startMillis = System.currentTimeMillis();
+	    final long endMillis = startMillis + timeoutUnit.convert(timeout, TimeUnit.MILLISECONDS);
+	    do {
+		    final int[] numReadHolder = new int[1];
+		    final Exception[] exceptionHolder = new Exception[1];
+		    channel.read(buffer, timeout, timeoutUnit, null, new CompletionHandler<Integer, Object>() {
+			    @Override
+			    public void completed(final Integer result, final Object attachment) {
+				    numReadHolder[0] += result;
+			    }
+
+			    @Override
+			    public void failed(final Throwable exc, final Object attachment) {
+				    if (exc instanceof Exception) {
+					    exceptionHolder[0] = (Exception) exc;
+				    } else {
+					    exceptionHolder[0] = new Exception(exc);
+				    }
+			    }
+		    });
+		    while (numReadHolder[0] == 0 && exceptionHolder[0] == null && System.currentTimeMillis() < endMillis) {
+			    Thread.sleep(100);
+		    }
+		    if (exceptionHolder[0] != null) {
+			    throw exceptionHolder[0];
+		    }
+		    if (buffer.position() < decoder.getResponseSize(buffer) && System.currentTimeMillis() >= endMillis) {
+			    throw new TimeoutException();
+		    }
 		}
 		while (buffer.position() < decoder.getResponseSize(buffer));
 		

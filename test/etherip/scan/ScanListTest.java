@@ -17,6 +17,7 @@ import java.util.logging.Logger;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import etherip.Tag;
@@ -65,6 +66,7 @@ public class ScanListTest implements TagListener
         errors.countDown();
     }
 
+    @Ignore("requires connection")
     @Test
     public void testScanListRead() throws Exception
     {
@@ -86,6 +88,7 @@ public class ScanListTest implements TagListener
         tag1.removeListener(this);
     }
 
+    @Ignore("requires connection")
     @Test(timeout=20000)
     public void testScanListWrite() throws Exception
     {
@@ -123,6 +126,7 @@ public class ScanListTest implements TagListener
         tag1.removeListener(this);
     }
     
+    @Ignore("requires connection")
     @Test
     public void testScanListError() throws Exception
     {

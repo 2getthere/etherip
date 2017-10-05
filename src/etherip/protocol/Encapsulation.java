@@ -71,14 +71,20 @@ public class Encapsulation implements Protocol
     final private Command command;
     private int session;
     final private Protocol body;
+    final private byte[] context;
     
-    final private static byte[] context = new byte[] { 'F', 'u', 'n', 's', 't', 'u', 'f', 'f' };
+    final private static byte[] CONTEXT = new byte[] { 'F', 'u', 'n', 's', 't', 'u', 'f', 'f' };
 
     public Encapsulation(final Command command, final int session, final Protocol body)
     {
+	    this(command, session, body, null);
+    }
+
+	public Encapsulation(final Command command, final int session, final Protocol body, final byte[] context) {
         this.command = command;
         this.session = session;
         this.body = body;
+		this.context = context == null ? CONTEXT : Arrays.copyOf(context, 8);
     }
 
 	/** {@inheritDoc} */
@@ -166,7 +172,7 @@ public class Encapsulation implements Protocol
     	
     	final byte[] context = new byte[8];
     	buf.get(context);
-    	if (!Arrays.equals(context, Encapsulation.context))
+    	if (!Arrays.equals(context, this.context))
     		throw new Exception("Received context " + Hexdump.toAscii(context));
     	
     	final int options = buf.getInt();
